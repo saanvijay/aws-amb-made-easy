@@ -70,12 +70,12 @@ func (nConfig *NetworkConfig) GetMemberFrameworkConfiguration() *managedblockcha
 	return &memeberFrameworkConfiguration
 }
 
-func (nConfig *NetworkConfig) GetMemberConfiguration() *managedblockchain.MemberConfiguration {
+func (nConfig *NetworkConfig) GetMemberConfiguration(memberName string) *managedblockchain.MemberConfiguration {
 	var memberConfiguration managedblockchain.MemberConfiguration
 
 	memberConfiguration.SetDescription("member description")
 	memberConfiguration.SetFrameworkConfiguration(nConfig.GetMemberFrameworkConfiguration())
-	memberConfiguration.SetName(nConfig.OrgList[0])
+	memberConfiguration.SetName(memberName)
 
 	return &memberConfiguration
 }
@@ -109,31 +109,29 @@ func (nConfig *NetworkConfig) CreateNetwork() *managedblockchain.CreateNetworkOu
 	networkInput.SetVotingPolicy(nConfig.GetVotingPolicy())
 	networkInput.SetFramework("HYPERLEDGER_FABRIC")
 	networkInput.SetFrameworkConfiguration(nConfig.GetNetworkFrameworkConfiguration())
-	networkInput.SetMemberConfiguration(nConfig.GetMemberConfiguration())
+	networkInput.SetMemberConfiguration(nConfig.GetMemberConfiguration(nConfig.OrgList[0]))
 
 	fabnetwork, err := amb.CreateNetwork(&networkInput)
 	if err != nil {
 		log.Fatalf("Unable to create the network : %s\n", err)
 	}
+	//fmt.Println(fabnetwork)
 
-	// Until network is available don't create peer nodes
+	// Until network is available don't return
 	for {
 		status := nConfig.GetNetworkStatus(*fabnetwork.NetworkId)
-		fmt.Printf("Network status %s...\n", status)
+		fmt.Printf("Network status %s\n", status)
 		if status == "AVAILABLE" {
 			break
 		}
 		time.Sleep(30 * time.Second)
 	}
-	fmt.Println("Network Created Successfully")
+
 	// Create peer nodes
 	for i := 0; i < nConfig.PeersPerOrg; i++ {
 		fmt.Println("Creating Peer Node...")
-		peerNode := nConfig.CreateNode(*fabnetwork.NetworkId, *fabnetwork.MemberId)
-		if err != nil {
-			log.Fatalf("Unable to create Peer Node %s\n", err)
-		}
-		fmt.Printf("Created Peer Node DONE")
+		peerId := nConfig.CreateNode(*fabnetwork.NetworkId, *fabnetwork.MemberId)
+		fmt.Printf("Created Peer Node %s\n", peerId)
 	}
 
 	return fabnetwork
